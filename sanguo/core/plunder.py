@@ -156,21 +156,24 @@ class Plunder(object):
         """
         @:rtype: PlunderRival
         """
-        gold_needs = BATTLES[city_id].refresh_cost_gold
-        resource = Resource(self.char_id, "Plunder Refresh")
-        with resource.check(gold=-gold_needs):
-            target = PlunderRival.search(city_id, exclude_char_id=self.char_id)
-            self.mongo_plunder.char_id = target.char_id
-            self.mongo_plunder.char_name = target.name
-            self.mongo_plunder.char_gold = target.get_plunder_gold(Char(self.char_id).mc.level)
-            self.mongo_plunder.char_power = target.power
-            self.mongo_plunder.char_leader = target.leader
-            self.mongo_plunder.char_formation = target.formation
-            self.mongo_plunder.char_hero_original_ids = target.hero_original_ids
-            self.mongo_plunder.char_city_id = target.city_id
-            self.mongo_plunder.save()
 
-            return target
+        target = PlunderRival.search(city_id, exclude_char_id=self.char_id)
+        self.mongo_plunder.char_id = target.char_id
+        self.mongo_plunder.char_name = target.name
+        self.mongo_plunder.char_gold = target.get_plunder_gold(Char(self.char_id).mc.level)
+        self.mongo_plunder.char_power = target.power
+        self.mongo_plunder.char_leader = target.leader
+        self.mongo_plunder.char_formation = target.formation
+        self.mongo_plunder.char_hero_original_ids = target.hero_original_ids
+        self.mongo_plunder.char_city_id = target.city_id
+        self.mongo_plunder.save()
+
+        if target:
+            gold_needs = BATTLES[city_id].refresh_cost_gold
+            resource = Resource(self.char_id, "Plunder Refresh")
+            resource.check_and_remove(gold=-gold_needs)
+
+        return target
 
     def max_plunder_times(self):
         char = Char(self.char_id)
@@ -191,7 +194,7 @@ class Plunder(object):
 
     def change_current_plunder_times(self, change_value, allow_overflow=False):
         max_times = self.max_plunder_times()
-        if not allow_overflow and self.mongo_plunder.current_times > max_times:
+        if change_value > 0 and not allow_overflow and self.mongo_plunder.current_times > max_times:
             return
 
         for i in range(10):
